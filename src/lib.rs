@@ -9,12 +9,12 @@ use anyhow::Context;
 use anyhow::Result;
 use cid::multihash::Code;
 use cid::Cid;
+use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
 use fvm_ipld_car::CarHeader;
+use fvm_ipld_encoding::tuple::*;
+use fvm_ipld_encoding::Cbor;
+use fvm_ipld_encoding::DAG_CBOR;
 use fvm_shared::actor::builtin::Type as ActorType;
-use fvm_shared::blockstore::{Block, Blockstore, MemoryBlockstore};
-use fvm_shared::encoding::tuple::*;
-use fvm_shared::encoding::Cbor;
-use fvm_shared::encoding::DAG_CBOR;
 
 const IPLD_RAW: u64 = 0x55;
 
