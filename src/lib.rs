@@ -47,10 +47,11 @@ impl Bundler {
     /// Adds bytecode from a byte slice.
     pub fn add_from_bytes(
         &mut self,
-        actor_type: ActorType,
+        actor_type: &str,
         forced_cid: Option<&Cid>,
         bytecode: &[u8],
     ) -> Result<Cid> {
+        let actor_type = ActorType::try_from(actor_type).map_err(anyhow::Error::msg)?;
         let cid = match forced_cid {
             Some(cid) => self.blockstore.put_keyed(cid, bytecode).and(Ok(*cid)),
             None => {
@@ -67,7 +68,7 @@ impl Bundler {
     /// Adds bytecode from a file.
     pub fn add_from_file<P: AsRef<Path>>(
         &mut self,
-        actor_type: ActorType,
+        actor_type: &str,
         forced_cid: Option<&Cid>,
         bytecode_path: P,
     ) -> Result<Cid> {
@@ -157,9 +158,9 @@ fn test_bundler() {
             // identity hash
             Cid::new_v1(IPLD_RAW, Multihash::wrap(0, format!("actor-{}", i).as_bytes()).unwrap())
         });
-        let typ = ActorType::from_i32(i + 1).unwrap();
+        let typ = String::from(&ActorType::from_i32(i + 1).unwrap());
         let cid = bundler
-            .add_from_bytes(typ, forced_cid.as_ref(), &rand::thread_rng().gen::<[u8; 32]>())
+            .add_from_bytes(&typ, forced_cid.as_ref(), &rand::thread_rng().gen::<[u8; 32]>())
             .unwrap();
 
         dbg!(cid.to_string());
