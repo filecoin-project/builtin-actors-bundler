@@ -65,7 +65,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Multihash::wrap(0, identity.as_bytes()).map(|mh| Cid::new_v1(IPLD_RAW, mh))
             })
             .transpose()?;
-        let cid = bundler.add_from_file(name.as_str().try_into().unwrap(), cid.as_ref(), path)?;
+        let cid = bundler.add_from_file(name, cid.as_ref(), path)?;
         println!("added actor {} with CID {}", name, cid)
     }
 
