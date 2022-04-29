@@ -16,7 +16,7 @@ cid = { version = "0.8.4", default-features = false, features = ["serde-codec"] 
 async-std = "1.11.0"
 futures = "0.3.21"
 anyhow = "1.0.56"
-serde_ipld_dagcbor = "0.1.2"
+serde_ipld_dagcbor = "0.2.0"
 serde_json = "1.0.79"
 serde = { version = "1.0.136", features = ["derive"] }
 fvm_ipld_blockstore = "0.1.0"
