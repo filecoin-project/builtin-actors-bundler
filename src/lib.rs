@@ -5,8 +5,7 @@ use async_std::channel::bounded;
 use async_std::task;
 use async_std::task::block_on;
 
-use anyhow::Context;
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
 use cid::multihash::Code;
 use cid::Cid;
 use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
@@ -14,20 +13,18 @@ use fvm_ipld_car::CarHeader;
 use fvm_ipld_encoding::tuple::*;
 use fvm_ipld_encoding::Cbor;
 use fvm_ipld_encoding::DAG_CBOR;
-use fvm_shared::actor::builtin::Type as ActorType;
 
 const IPLD_RAW: u64 = 0x55;
 
 /// A library to bundle the Wasm bytecode of builtin actors into a CAR file.
 ///
 /// The single root CID of the CAR file points to an CBOR-encoded IPLD
-/// Map<Cid, i32> where i32 is to be interpreted as an
-/// fvm_shared::actor::builtin::Type enum value.
+/// Vec<(String, Cid)> where.
 pub struct Bundler {
     /// Staging blockstore.
     blockstore: MemoryBlockstore,
     /// Tracks the mapping of actors to Cids. Inverted when writing. Allows overriding.
-    added: BTreeMap<ActorType, Cid>,
+    added: BTreeMap<u32, (String, Cid)>,
     /// Path of the output bundle.
     bundle_dst: PathBuf,
 }
@@ -47,11 +44,11 @@ impl Bundler {
     /// Adds bytecode from a byte slice.
     pub fn add_from_bytes(
         &mut self,
-        actor_type: &str,
+        actor_type: u32,
+        actor_name: String,
         forced_cid: Option<&Cid>,
         bytecode: &[u8],
     ) -> Result<Cid> {
-        let actor_type = ActorType::try_from(actor_type).map_err(anyhow::Error::msg)?;
         let cid = match forced_cid {
             Some(cid) => self.blockstore.put_keyed(cid, bytecode).and(Ok(*cid)),
             None => {
@@ -61,19 +58,20 @@ impl Bundler {
         .with_context(|| {
             format!("failed to put bytecode for actor {:?} into blockstore", actor_type)
         })?;
-        self.added.insert(actor_type, cid);
+        self.added.insert(actor_type, (actor_name, cid));
         Ok(cid)
     }
 
     /// Adds bytecode from a file.
     pub fn add_from_file<P: AsRef<Path>>(
         &mut self,
-        actor_type: &str,
+        actor_type: u32,
+        actor_name: String,
         forced_cid: Option<&Cid>,
         bytecode_path: P,
     ) -> Result<Cid> {
         let bytecode = std::fs::read(bytecode_path).context("failed to open bytecode file")?;
-        self.add_from_bytes(actor_type, forced_cid, bytecode.as_slice())
+        self.add_from_bytes(actor_type, actor_name, forced_cid, bytecode.as_slice())
     }
 
     /// Commits the added bytecode entries and writes the CAR file to disk.
@@ -82,10 +80,16 @@ impl Bundler {
     }
 
     async fn write_car(self) -> Result<()> {
+        if let Some((actual, expected)) = self.added.keys().copied().zip(1..).find(|(a, b)| a != b)
+        {
+            return Err(anyhow!(
+                "actor types are not sequential: expected {expected}, got {actual}"
+            ));
+        }
+
         let mut out = async_std::fs::File::create(&self.bundle_dst).await?;
 
-        let manifest_payload: Vec<(String, Cid)> =
-            self.added.iter().map(|(t, c)| (t.into(), *c)).collect();
+        let manifest_payload: Vec<&(String, Cid)> = self.added.values().collect();
         let manifest_data = serde_ipld_dagcbor::to_vec(&manifest_payload)?;
         let manifest_link = self
             .blockstore
@@ -112,7 +116,7 @@ impl Bundler {
         tx.send((manifest_link, manifest_data)).await.unwrap();
 
         // Add the bytecodes.
-        for cid in self.added.iter().map(|(_, cid)| cid) {
+        for cid in self.added.values().map(|(_, cid)| cid) {
             println!("adding cid {} to bundle CAR", cid);
             let data = self.blockstore.get(cid).unwrap().unwrap();
             tx.send((*cid, data)).await.unwrap();
@@ -142,7 +146,6 @@ fn test_bundler() {
     use async_std::fs::File;
     use cid::multihash::Multihash;
     use fvm_ipld_car::{load_car, CarReader};
-    use num_traits::FromPrimitive;
     use rand::Rng;
 
     let tmp = tempfile::tempdir().unwrap();
@@ -158,9 +161,13 @@ fn test_bundler() {
             // identity hash
             Cid::new_v1(IPLD_RAW, Multihash::wrap(0, format!("actor-{}", i).as_bytes()).unwrap())
         });
-        let typ = String::from(&ActorType::from_i32(i + 1).unwrap());
         let cid = bundler
-            .add_from_bytes(&typ, forced_cid.as_ref(), &rand::thread_rng().gen::<[u8; 32]>())
+            .add_from_bytes(
+                i + 1,
+                format!("actor-{i}"),
+                forced_cid.as_ref(),
+                &rand::thread_rng().gen::<[u8; 32]>(),
+            )
             .unwrap();
 
         dbg!(cid.to_string());
@@ -198,22 +205,16 @@ fn test_bundler() {
     let manifest_data = bs.get(&manifest.data).unwrap().unwrap();
     let manifest_vec: Vec<(String, Cid)> =
         serde_ipld_dagcbor::from_slice(manifest_data.as_slice()).unwrap();
-    let manifest: BTreeMap<ActorType, Cid> =
-        manifest_vec.iter().map(|(s, c)| (ActorType::try_from(s.as_str()).unwrap(), *c)).collect();
-
-    // Verify the manifest contains what we expect.
-    for (i, cid) in cids.into_iter().enumerate() {
-        let typ = ActorType::from_i32((i + 1) as i32).unwrap();
-        assert_eq!(manifest.get(&typ).unwrap(), &cid);
-
-        // Verify that the last 5 CIDs are really forced CIDs.
+    for (i, (target_cid, (name, cid))) in cids.into_iter().zip(manifest_vec.into_iter()).enumerate()
+    {
+        assert_eq!(format!("actor-{i}"), name);
+        assert_eq!(target_cid, cid);
         if i > 5 {
             let expected = Cid::new_v1(
                 IPLD_RAW,
-                Multihash::wrap(0, format!("actor-{}", i).as_bytes()).expect("name too long"),
+                Multihash::wrap(0, format!("actor-{i}").as_bytes()).expect("name too long"),
             );
             assert_eq!(cid, expected)
         }
-        assert!(bs.has(&cid).unwrap());
     }
 }

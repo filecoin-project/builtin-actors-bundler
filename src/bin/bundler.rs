@@ -15,9 +15,9 @@ const IPLD_RAW: u64 = 0x55;
 for Filecoin actors.
 
 It takes a comma-separated list of bytecode paths to bundle (--bytecode-paths)
-and their corresponing actor names (--actor-names). It then generates two
-artifacts: a CAR bundle and a manifest, in their respective paths (--bundle-dst,
---manifest-dst).
+and their corresponing actor names (--actor-names). The actor types are assumed to be sequential
+integers. It then generates two artifacts: a CAR bundle and a manifest, in their respective paths
+(--bundle-dst, --manifest-dst).
 
 By default, this tool computes the CIDs of the bytecodes using the IPLD_RAW
 multicodec (0x55) and a Blake2b256 multihash. You may override CID generation
@@ -56,7 +56,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let mut bundler = Bundler::new(cli.bundle_dst);
-    for (path, name) in cli.bytecode_paths.into_iter().zip(cli.actor_names.iter()) {
+    for (i, (path, name)) in cli.bytecode_paths.into_iter().zip(cli.actor_names.iter()).enumerate()
+    {
         let cid = cli
             .override_cids_prefix
             .as_ref()
@@ -65,7 +66,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Multihash::wrap(0, identity.as_bytes()).map(|mh| Cid::new_v1(IPLD_RAW, mh))
             })
             .transpose()?;
-        let cid = bundler.add_from_file(name, cid.as_ref(), path)?;
+        let cid = bundler.add_from_file(i as u32 + 1, name.clone(), cid.as_ref(), path)?;
         println!("added actor {} with CID {}", name, cid)
     }
 
