@@ -134,7 +134,7 @@ impl Bundler {
 /// The only currently supported version is 1, which encodes the data as a tuple
 /// of strings (actor names) and actor code cids.
 #[derive(Serialize_tuple, Deserialize_tuple, Clone)]
-pub struct Manifest {
+struct Manifest {
     pub version: u32,
     pub data: Cid,
 }
