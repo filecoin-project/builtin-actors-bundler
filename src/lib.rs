@@ -145,7 +145,7 @@ impl Cbor for Manifest {}
 fn test_bundler() {
     use async_std::fs::File;
     use cid::multihash::Multihash;
-    use fvm_ipld_car::{load_car, CarReader};
+    use fvm_ipld_car::{load_car_unchecked, CarReader};
     use rand::Rng;
 
     let tmp = tempfile::tempdir().unwrap();
@@ -187,7 +187,7 @@ fn test_bundler() {
     let bs = MemoryBlockstore::default();
     let roots = block_on(async {
         let file = File::open(&path).await.unwrap();
-        load_car(&bs, file).await.unwrap()
+        load_car_unchecked(&bs, file).await.unwrap()
     });
     assert_eq!(roots.len(), 1);
 
