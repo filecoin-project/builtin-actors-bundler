@@ -11,7 +11,6 @@ use cid::Cid;
 use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
 use fvm_ipld_car::CarHeader;
 use fvm_ipld_encoding::tuple::*;
-use fvm_ipld_encoding::Cbor;
 use fvm_ipld_encoding::DAG_CBOR;
 
 const IPLD_RAW: u64 = 0x55;
@@ -138,8 +137,6 @@ struct Manifest {
     pub version: u32,
     pub data: Cid,
 }
-
-impl Cbor for Manifest {}
 
 #[test]
 fn test_bundler() {
