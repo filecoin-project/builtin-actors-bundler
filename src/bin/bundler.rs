@@ -30,10 +30,10 @@ The length of the list of actor names (--actor-names) must match the length of
 the paths being bundled.", long_about = None)]
 struct Cli {
     /// The paths of the Wasm bytecode files to bundle.
-    #[clap(long, required = true, multiple_values = true)]
+    #[clap(long, required = true)]
     bytecode_paths: Vec<String>,
     /// Actor names to include their CIDs in the manifest.
-    #[clap(long, multiple_values = true)]
+    #[clap(long)]
     actor_names: Vec<String>,
     /// Overrides the CIDs of the bundled actors with synthetic CIDs, for
     /// compatibility with networks prior to FIP-0031.
