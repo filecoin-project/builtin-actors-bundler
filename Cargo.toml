@@ -9,7 +9,7 @@ repository = "https://github.com/filecoin-project/builtin-actors-bundler"
 keywords = ["filecoin", "web3", "wasm"]
 
 [dependencies]
-clap = { version = "4.3.21", features = ["derive"] }
+clap = { version = "4.3.21", default-features = false, features = ["derive", "std", "help", "usage", "error-context"] }
 fvm_ipld_car = "0.7.0"
 cid = { version = "0.10.1", default-features = false, features = ["serde-codec"] }
 async-std = "1.12.0"
