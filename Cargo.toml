@@ -9,19 +9,19 @@ repository = "https://github.com/filecoin-project/builtin-actors-bundler"
 keywords = ["filecoin", "web3", "wasm"]
 
 [dependencies]
-clap = { version = "3.2.17", features = ["derive"] }
-fvm_ipld_car = "0.6.0"
-cid = { version = "0.8.5", default-features = false, features = ["serde-codec"] }
-async-std = "1.11.0"
-futures = "0.3.21"
-anyhow = "1.0.56"
-serde_ipld_dagcbor = "0.2.2"
-serde_json = "1.0.79"
-serde = { version = "1.0.136", features = ["derive"] }
-fvm_ipld_blockstore = "0.1.1"
-fvm_ipld_encoding = "0.3.3"
+clap = { version = "4.3.21", features = ["derive"] }
+fvm_ipld_car = "0.7.0"
+cid = { version = "0.10.1", default-features = false, features = ["serde-codec"] }
+async-std = "1.12.0"
+futures = { version = "0.3.28", default-features = false }
+anyhow = "1.0.72"
+serde_ipld_dagcbor = "0.4.0"
+serde_json = "1.0.104"
+serde = { version = "1.0.183", features = ["derive"] }
+fvm_ipld_blockstore = "0.2.0"
+fvm_ipld_encoding = "0.4.0"
 
 [dev-dependencies]
-tempfile = "3.3.0"
+tempfile = "3.7.1"
 rand = "0.8.5"
-num-traits = "0.2.14"
+num-traits = "0.2.16"
