@@ -6,7 +6,7 @@ use async_std::task;
 use async_std::task::block_on;
 
 use anyhow::{anyhow, Context, Result};
-use cid::multihash::Code;
+use multihash_codetable::Code;
 use cid::Cid;
 use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
 use fvm_ipld_car::CarHeader;
