@@ -6,12 +6,12 @@ use async_std::task;
 use async_std::task::block_on;
 
 use anyhow::{anyhow, Context, Result};
-use multihash_codetable::Code;
 use cid::Cid;
 use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
 use fvm_ipld_car::CarHeader;
 use fvm_ipld_encoding::tuple::*;
 use fvm_ipld_encoding::DAG_CBOR;
+use multihash_codetable::Code;
 
 const IPLD_RAW: u64 = 0x55;
 
@@ -116,7 +116,6 @@ impl Bundler {
 
         // Add the bytecodes.
         for cid in self.added.values().map(|(_, cid)| cid) {
-            println!("adding cid {} to bundle CAR", cid);
             let data = self.blockstore.get(cid).unwrap().unwrap();
             tx.send((*cid, data)).await.unwrap();
         }
