@@ -1,14 +1,11 @@
 use std::collections::BTreeMap;
+use std::fs::File;
 use std::path::{Path, PathBuf};
-
-use async_std::channel::bounded;
-use async_std::task;
-use async_std::task::block_on;
 
 use anyhow::{anyhow, Context, Result};
 use cid::Cid;
 use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
-use fvm_ipld_car::CarHeader;
+use fvm_ipld_car::{Block as CarBlock, CarWriter};
 use fvm_ipld_encoding::tuple::*;
 use fvm_ipld_encoding::DAG_CBOR;
 use multihash_codetable::Code;
@@ -75,10 +72,6 @@ impl Bundler {
 
     /// Commits the added bytecode entries and writes the CAR file to disk.
     pub fn finish(self) -> Result<()> {
-        block_on(self.write_car())
-    }
-
-    async fn write_car(self) -> Result<()> {
         if let Some((actual, expected)) = self.added.keys().copied().zip(1..).find(|(a, b)| a != b)
         {
             return Err(anyhow!(
@@ -86,7 +79,7 @@ impl Bundler {
             ));
         }
 
-        let mut out = async_std::fs::File::create(&self.bundle_dst).await?;
+        let mut out = File::create(&self.bundle_dst)?;
 
         let manifest_payload: Vec<&(String, Cid)> = self.added.values().collect();
         let manifest_data = serde_ipld_dagcbor::to_vec(&manifest_payload)?;
@@ -102,28 +95,22 @@ impl Bundler {
             .put(Code::Blake2b256, &Block { codec: DAG_CBOR, data: &manifest_bytes })?;
 
         // Create a CAR header.
-        let car = CarHeader { roots: vec![root], version: 1 };
-
-        let (tx, mut rx) = bounded(16);
-        let write_task =
-            task::spawn(async move { car.write_stream_async(&mut out, &mut rx).await.unwrap() });
+        let mut writer = CarWriter::new(vec![root].into(), &mut out)?;
 
         // Add the root payload.
-        tx.send((root, manifest_bytes)).await.unwrap();
+        writer.write(CarBlock { cid: root, data: manifest_bytes })?;
 
         // Add the manifest payload.
-        tx.send((manifest_link, manifest_data)).await.unwrap();
+        writer.write(CarBlock { cid: manifest_link, data: manifest_data })?;
 
         // Add the bytecodes.
         for cid in self.added.values().map(|(_, cid)| cid) {
-            let data = self.blockstore.get(cid).unwrap().unwrap();
-            tx.send((*cid, data)).await.unwrap();
+            let data =
+                self.blockstore.get(cid)?.with_context(|| format!("missing block: {cid}"))?;
+            writer.write(CarBlock { cid: *cid, data })?;
         }
 
-        drop(tx);
-
-        write_task.await;
-
+        writer.flush()?;
         Ok(())
     }
 }
@@ -139,7 +126,6 @@ struct Manifest {
 
 #[test]
 fn test_bundler() {
-    use async_std::fs::File;
     use cid::multihash::Multihash;
     use fvm_ipld_car::{load_car_unchecked, CarReader};
     use rand::Rng;
@@ -172,19 +158,13 @@ fn test_bundler() {
     bundler.finish().unwrap();
 
     // Read with the CarReader directly and verify there's a single root.
-    let reader = block_on(async {
-        let file = File::open(&path).await.unwrap();
-        CarReader::new(file).await.unwrap()
-    });
+    let reader = CarReader::new(File::open(&path).unwrap()).unwrap();
     assert_eq!(reader.header.roots.len(), 1);
     dbg!(reader.header.roots[0].to_string());
 
     // Load the CAR into a Blockstore.
     let bs = MemoryBlockstore::default();
-    let roots = block_on(async {
-        let file = File::open(&path).await.unwrap();
-        load_car_unchecked(&bs, file).await.unwrap()
-    });
+    let roots = load_car_unchecked(&bs, File::open(&path).unwrap()).unwrap();
     assert_eq!(roots.len(), 1);
 
     // Compare that the previous root matches this one.
