@@ -1,4 +1,4 @@
-///! A Wasm bytecode CAR bundling utility. See helptext of command for docs.
+//! A Wasm bytecode CAR bundling utility. See helptext of command for docs.
 use std::error::Error;
 
 use cid::multihash::Multihash;
