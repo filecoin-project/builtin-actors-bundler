@@ -18,7 +18,7 @@ jobs:
     - name: Checking out
       uses: actions/checkout@v4
     - name: Running rustfmt
-      run: cargo fmt --all
+      run: cargo fmt --all --check
 
   check-clippy:
     runs-on: ubuntu-latest
