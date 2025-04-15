@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use cid::Cid;
 use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
 use fvm_ipld_car::{Block as CarBlock, CarWriter};
-use fvm_ipld_encoding::tuple::*;
 use fvm_ipld_encoding::DAG_CBOR;
+use fvm_ipld_encoding::tuple::*;
 use multihash_codetable::Code;
 
 const IPLD_RAW: u64 = 0x55;
@@ -127,7 +127,7 @@ struct Manifest {
 #[test]
 fn test_bundler() {
     use cid::multihash::Multihash;
-    use fvm_ipld_car::{load_car_unchecked, CarReader};
+    use fvm_ipld_car::{CarReader, load_car_unchecked};
     use rand::Rng;
 
     let tmp = tempfile::tempdir().unwrap();
@@ -148,7 +148,7 @@ fn test_bundler() {
                 i + 1,
                 format!("actor-{i}"),
                 forced_cid.as_ref(),
-                &rand::thread_rng().gen::<[u8; 32]>(),
+                &rand::thread_rng().r#gen::<[u8; 32]>(),
             )
             .unwrap();
 

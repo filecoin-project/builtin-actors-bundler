@@ -1,8 +1,8 @@
 //! A Wasm bytecode CAR bundling utility. See helptext of command for docs.
 use std::error::Error;
 
-use cid::multihash::Multihash;
 use cid::Cid;
+use cid::multihash::Multihash;
 use clap::Parser;
 use fil_actor_bundler::Bundler;
 
