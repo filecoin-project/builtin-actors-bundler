@@ -67,7 +67,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             })
             .transpose()?;
         let cid = bundler.add_from_file(i as u32 + 1, name.clone(), cid.as_ref(), path)?;
-        println!("added actor {} with CID {}", name, cid)
+        println!("added actor {name} with CID {cid}")
     }
 
     bundler.finish()?;
