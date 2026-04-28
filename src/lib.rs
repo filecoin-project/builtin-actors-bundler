@@ -52,7 +52,7 @@ impl Bundler {
             }
         }
         .with_context(|| {
-            format!("failed to put bytecode for actor {:?} into blockstore", actor_type)
+            format!("failed to put bytecode for actor {actor_type:?} into blockstore")
         })?;
         self.added.insert(actor_type, (actor_name, cid));
         Ok(cid)
@@ -128,7 +128,7 @@ struct Manifest {
 fn test_bundler() {
     use cid::multihash::Multihash;
     use fvm_ipld_car::{load_car_unchecked, CarReader};
-    use rand::Rng;
+    use rand::RngExt as _;
 
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("test_bundle.car");
@@ -141,14 +141,14 @@ fn test_bundler() {
     for i in 0..10 {
         let forced_cid = (i > 5).then(|| {
             // identity hash
-            Cid::new_v1(IPLD_RAW, Multihash::wrap(0, format!("actor-{}", i).as_bytes()).unwrap())
+            Cid::new_v1(IPLD_RAW, Multihash::wrap(0, format!("actor-{i}").as_bytes()).unwrap())
         });
         let cid = bundler
             .add_from_bytes(
                 i + 1,
                 format!("actor-{i}"),
                 forced_cid.as_ref(),
-                &rand::thread_rng().gen::<[u8; 32]>(),
+                &rand::rng().random::<[u8; 32]>(),
             )
             .unwrap();
 
