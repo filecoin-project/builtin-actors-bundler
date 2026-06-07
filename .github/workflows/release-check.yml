@@ -1,8 +1,10 @@
 name: Release Checker
 
 on:
-  pull_request_target:
-    paths: ["Cargo.toml"]
+  # Change to pull_request_target for the workflow to function correctly on PRs from forks
+  pull_request:
+    paths:
+      - "Cargo.toml"
     types: [ opened, synchronize, reopened, labeled, unlabeled ]
   workflow_dispatch:
 
@@ -16,6 +18,21 @@ concurrency:
 
 jobs:
   release-check:
-    uses: ipdxco/unified-github-workflows/.github/workflows/release-check.yml@v1
+    uses: ipdxco/unified-github-workflows/.github/workflows/release-check.yml@v1.0
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.pull_request.head.repo.fork }}
     with:
-      sources: '["Cargo.toml"]'
+      sources: |
+        [
+          "Cargo.toml"
+        ]
+      separator: "@"
+
+  cargo-publish:
+    needs: [release-check]
+    if: needs.release-check.outputs.json != '{}'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Dry-run publish
+        run: |
+          cargo publish --dry-run
